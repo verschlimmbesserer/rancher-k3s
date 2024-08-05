@@ -1,0 +1,53 @@
+---
+
+- name: "Copy Bootstrap K3s Master service file"
+  register: k3s_service
+  ansible.builtin.template:
+      src: "k3s.service.j2"
+      dest: "{{ systemd_dir }}/k3s.service"
+      owner: root
+      group: root
+      mode: "0644"
+
+- name: "Copy Bootstrap K3s Master service env file"
+  ansible.builtin.template:
+      src: "k3s.service.env.j2"
+      dest: "{{ systemd_dir }}/k3s.service.env"
+      owner: root
+      group: root
+      mode: "0644"
+
+- name: "Enable and check K3s service"
+  ansible.builtin.systemd:
+      name: k3s
+      daemon_reload: true
+      state: restarted
+      enabled: true
+
+- name: "Wait for token"
+  ansible.builtin.wait_for:
+      path: "{{ k3s_server_location }}/server/token"
+
+- name: "Register token file access mode"
+  ansible.builtin.stat:
+      path: "{{ k3s_server_location }}/server/token"
+  register: p
+
+- name: "Change file access token"
+  ansible.builtin.file:
+      path: "{{ k3s_server_location }}/server/token"
+      mode: "g+rx,o+rx"
+
+- name: "Read token from master"
+  ansible.builtin.slurp:
+      path: "{{ k3s_server_location }}/server/token"
+  register: node_token
+
+- name: "Store Master token"
+  ansible.builtin.set_fact:
+      token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
+
+- name: "Restore token file access"
+  ansible.builtin.file:
+      path: "{{ k3s_server_location }}/server/token"
+      mode: "{{ p.stat.mode }}"

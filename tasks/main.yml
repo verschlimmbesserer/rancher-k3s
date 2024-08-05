@@ -1,0 +1,28 @@
+---
+
+- name: "Run Prereq tasks"
+  ansible.builtin.import_tasks: prereq.yml
+
+- name: "Run Download tasks"
+  ansible.builtin.import_tasks: download.yml
+
+- name: "Configure and Start K3s Master Nodes"
+  ansible.builtin.import_tasks: registry.yml
+
+- name: "Configure and Start K3s Master Nodes"
+  ansible.builtin.import_tasks: bootstrap.yml
+  when: inventory_hostname == k3s_cluster_bootstrap_node
+
+- name: "Configure and Start K3s Master Nodes"
+  ansible.builtin.import_tasks: master.yml
+  when: k3s_mode is defined and k3s_mode == 'master' and inventory_hostname != k3s_cluster_bootstrap_node
+
+- name: "Configure and Start K3s Master Nodes"
+  ansible.builtin.import_tasks: kube.yml
+  when: k3s_mode is defined and k3s_mode == 'master'
+
+- name: "Configure and Start K3s Worker Nodes"
+  ansible.builtin.import_tasks: agent.yml
+  when: k3s_mode is not defined or k3s_mode == 'agent'
+
+...
